@@ -1,5 +1,7 @@
 from django.contrib import messages
 from django.contrib.messages.views import SuccessMessageMixin
+from django.contrib.auth.mixins import LoginRequiredMixin
+
 
 from django.urls import reverse_lazy
 from django.views.generic import (
@@ -13,23 +15,27 @@ from django.views.generic import (
 from .models import Entry
 
 
-class EntryListView(ListView):
+class LockedView(LoginRequiredMixin):
+    login_url = "admin:login"
+
+
+class EntryListView(LockedView, ListView):
     model = Entry
     queryset = Entry.objects.all().order_by("-date_created")
 
 
-class EntryDetailView(DetailView):
+class EntryDetailView(LockedView, DetailView):
     model = Entry
 
 
-class EntryCreateView(SuccessMessageMixin, CreateView):
+class EntryCreateView(LockedView, SuccessMessageMixin, CreateView):
     model = Entry
     fields = ["title", "content"]
     success_url = reverse_lazy("entry-list")
     success_message = "Your new entry was created!"
 
 
-class EntryUpdateView(SuccessMessageMixin, UpdateView):
+class EntryUpdateView(LockedView, SuccessMessageMixin, UpdateView):
     model = Entry
     fields = ["title", "content"]
     success_message = "Your entry was updated!"
@@ -37,11 +43,11 @@ class EntryUpdateView(SuccessMessageMixin, UpdateView):
     def get_success_url(self):
         return reverse_lazy(
             "entry-detail",
-            kwargs={"pk": self.entry.id}
+            kwargs={"pk": self.object.pk}
         )
 
 
-class EntryDeleteView(DeleteView):
+class EntryDeleteView(LockedView, DeleteView):
     model = Entry
     success_url = reverse_lazy("entry-list")
     success_message = "Your entry was deleted!"
@@ -49,3 +55,5 @@ class EntryDeleteView(DeleteView):
     def delete(self, request, *args, **kwargs):
         messages.success(self.request, self.success_message)
         return super().delete(request, *args, **kwargs)
+
+
